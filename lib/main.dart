@@ -17,6 +17,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Traking Maps',
       theme: ThemeData(
         primarySwatch: Colors.blue,
@@ -37,7 +38,7 @@ class _MapUiState extends State<MapUi> {
   // Initial location of the Map view
   CameraPosition _initialLocation = CameraPosition(target: LatLng(0.0, 0.0));
   // For controlling the view of the Map
-  late GoogleMapController mapController;
+  GoogleMapController? mapController;
 
   late Position _currentPosition;
   String _currentAddress = '';
@@ -54,8 +55,12 @@ class _MapUiState extends State<MapUi> {
 
   Set<Marker> markers = {};
 
+  // Object for PolylinePoints
   late PolylinePoints polylinePoints;
+  // Map storing polylines created by connecting
+  // two points
   Map<PolylineId, Polyline> polylines = {};
+  // List of coordinates to join
   List<LatLng> polylineCoordinates = [];
 
   final _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -114,9 +119,11 @@ class _MapUiState extends State<MapUi> {
     await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high)
         .then((Position position) async {
       setState(() {
+        // Store the position in the variable
         _currentPosition = position;
         print('CURRENT POS: $_currentPosition');
-        mapController.animateCamera(
+        // For moving the camera to current location
+        mapController?.animateCamera(
           CameraUpdate.newCameraPosition(
             CameraPosition(
               target: LatLng(position.latitude, position.longitude),
@@ -134,15 +141,19 @@ class _MapUiState extends State<MapUi> {
   // Method for retrieving the address
   _getAddress() async {
     try {
+      // Places are retrieved using the coordinates
       List<Placemark> p = await placemarkFromCoordinates(
           _currentPosition.latitude, _currentPosition.longitude);
-
+      // Taking the most probable result
       Placemark place = p[0];
 
       setState(() {
+        // Structuring the address
         _currentAddress =
             "${place.name}, ${place.locality}, ${place.postalCode}, ${place.country}";
+        // Update the text of the TextField
         startAddressController.text = _currentAddress;
+        // Setting the user's present location as the starting address
         _startAddress = _currentAddress;
       });
     } catch (e) {
@@ -232,7 +243,7 @@ class _MapUiState extends State<MapUi> {
 
       // Accommodate the two locations within the
       // camera view of the map
-      mapController.animateCamera(
+      mapController?.animateCamera(
         CameraUpdate.newLatLngBounds(
           LatLngBounds(
             northeast: LatLng(northEastLatitude, northEastLongitude),
@@ -297,7 +308,10 @@ class _MapUiState extends State<MapUi> {
     double destinationLatitude,
     double destinationLongitude,
   ) async {
+    // Initializing PolylinePoints
     polylinePoints = PolylinePoints();
+    // Generating the list of coordinates to be used for
+    // drawing the polylines
     PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
       Secrets.API_KEY, // Google Maps API Key
       PointLatLng(startLatitude, startLongitude),
@@ -305,12 +319,13 @@ class _MapUiState extends State<MapUi> {
       travelMode: TravelMode.transit,
     );
 
+    // Adding the coordinates to the list
     if (result.points.isNotEmpty) {
       result.points.forEach((PointLatLng point) {
         polylineCoordinates.add(LatLng(point.latitude, point.longitude));
       });
     }
-
+    
     PolylineId id = PolylineId('poly');
     Polyline polyline = Polyline(
       polylineId: id,
@@ -372,7 +387,7 @@ class _MapUiState extends State<MapUi> {
                             child: Icon(Icons.add),
                           ),
                           onTap: () {
-                            mapController.animateCamera(
+                            mapController?.animateCamera(
                               CameraUpdate.zoomIn(),
                             );
                           },
@@ -391,7 +406,7 @@ class _MapUiState extends State<MapUi> {
                             child: Icon(Icons.remove),
                           ),
                           onTap: () {
-                            mapController.animateCamera(
+                            mapController?.animateCamera(
                               CameraUpdate.zoomOut(),
                             );
                           },
@@ -548,7 +563,7 @@ class _MapUiState extends State<MapUi> {
                           child: Icon(Icons.my_location),
                         ),
                         onTap: () {
-                          mapController.animateCamera(
+                          mapController?.animateCamera(
                             CameraUpdate.newCameraPosition(
                               CameraPosition(
                                 target: LatLng(
